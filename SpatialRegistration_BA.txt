@@ -1,0 +1,232 @@
+36 Channels and 32 Optodes
+
+ # , Anatomical label, Percentage of Overlap
+CH01 : 10 - Frontopolar area,  0.43667
+CH01 : 11 - Orbitofrontal area,  0.56333
+
+CH02 : 10 - Frontopolar area,  0.38782
+CH02 : 11 - Orbitofrontal area,  0.61218
+
+CH03 : 10 - Frontopolar area,  1
+
+CH04 : 10 - Frontopolar area,  0.22308
+CH04 : 11 - Orbitofrontal area,  0.42692
+CH04 : 46 - Dorsolateral prefrontal cortex,  0.076923
+CH04 : 47 - Inferior prefrontal gyrus,  0.27308
+
+CH05 : 45 - pars triangularis Broca's area,  0.21277
+CH05 : 46 - Dorsolateral prefrontal cortex,  0.78723
+
+CH06 : 10 - Frontopolar area,  0.25573
+CH06 : 11 - Orbitofrontal area,  0.46947
+CH06 : 46 - Dorsolateral prefrontal cortex,  0.072519
+CH06 : 47 - Inferior prefrontal gyrus,  0.20229
+
+CH07 : 45 - pars triangularis Broca's area,  0.13187
+CH07 : 46 - Dorsolateral prefrontal cortex,  0.86813
+
+CH08 : 10 - Frontopolar area,  0.68581
+CH08 : 11 - Orbitofrontal area,  0.31419
+
+CH09 : 9 - Dorsolateral prefrontal cortex,  0.017794
+CH09 : 10 - Frontopolar area,  0.98221
+
+CH10 : 10 - Frontopolar area,  0.072
+CH10 : 45 - pars triangularis Broca's area,  0.076
+CH10 : 46 - Dorsolateral prefrontal cortex,  0.852
+
+CH11 : 10 - Frontopolar area,  0.63545
+CH11 : 11 - Orbitofrontal area,  0.36455
+
+CH12 : 9 - Dorsolateral prefrontal cortex,  0.010453
+CH12 : 10 - Frontopolar area,  0.98955
+
+CH13 : 10 - Frontopolar area,  0.11765
+CH13 : 45 - pars triangularis Broca's area,  0.039216
+CH13 : 46 - Dorsolateral prefrontal cortex,  0.84314
+
+CH14 : 9 - Dorsolateral prefrontal cortex,  0.93333
+CH14 : 10 - Frontopolar area,  0.066667
+
+CH15 : 8 - Includes Frontal eye fields,  0.26423
+CH15 : 9 - Dorsolateral prefrontal cortex,  0.73577
+
+CH16 : 8 - Includes Frontal eye fields,  0.24206
+CH16 : 9 - Dorsolateral prefrontal cortex,  0.75794
+
+CH17 : 9 - Dorsolateral prefrontal cortex,  0.79263
+CH17 : 46 - Dorsolateral prefrontal cortex,  0.20737
+
+CH18 : 45 - pars triangularis Broca's area,  0.83268
+CH18 : 46 - Dorsolateral prefrontal cortex,  0.16732
+
+CH19 : 9 - Dorsolateral prefrontal cortex,  0.85714
+CH19 : 46 - Dorsolateral prefrontal cortex,  0.14286
+
+CH20 : 45 - pars triangularis Broca's area,  0.8937
+CH20 : 46 - Dorsolateral prefrontal cortex,  0.1063
+
+CH21 : 20 - Inferior Temporal gyrus,  0.16197
+CH21 : 21 - Middle Temporal gyrus,  0.83803
+
+CH22 : 21 - Middle Temporal gyrus,  1
+
+CH23 : 20 - Inferior Temporal gyrus,  0.10616
+CH23 : 21 - Middle Temporal gyrus,  0.89384
+
+CH24 : 21 - Middle Temporal gyrus,  1
+
+CH25 : 21 - Middle Temporal gyrus,  0.31661
+CH25 : 22 - Superior Temporal Gyrus,  0.68339
+
+CH26 : 2 - Primary Somatosensory Cortex,  0.33645
+CH26 : 22 - Superior Temporal Gyrus,  0.14953
+CH26 : 40 - Supramarginal gyrus part of Wernicke's area,  0.19626
+CH26 : 42 - Primary and Auditory Association Cortex,  0.062305
+CH26 : 48 - Retrosubicular area,  0.25545
+
+CH27 : 21 - Middle Temporal gyrus,  0.23397
+CH27 : 22 - Superior Temporal Gyrus,  0.76603
+
+CH28 : 2 - Primary Somatosensory Cortex,  0.25857
+CH28 : 22 - Superior Temporal Gyrus,  0.12773
+CH28 : 40 - Supramarginal gyrus part of Wernicke's area,  0.41121
+CH28 : 48 - Retrosubicular area,  0.20249
+
+CH29 : 20 - Inferior Temporal gyrus,  0.4875
+CH29 : 21 - Middle Temporal gyrus,  0.5125
+
+CH30 : 21 - Middle Temporal gyrus,  0.42308
+CH30 : 22 - Superior Temporal Gyrus,  0.49359
+CH30 : 37 - Fusiform gyrus,  0.083333
+
+CH31 : 20 - Inferior Temporal gyrus,  0.52652
+CH31 : 37 - Fusiform gyrus,  0.47348
+
+CH32 : 20 - Inferior Temporal gyrus,  0.47785
+CH32 : 21 - Middle Temporal gyrus,  0.52215
+
+CH33 : 21 - Middle Temporal gyrus,  0.36513
+CH33 : 22 - Superior Temporal Gyrus,  0.5
+CH33 : 37 - Fusiform gyrus,  0.13487
+
+CH34 : 20 - Inferior Temporal gyrus,  0.38202
+CH34 : 37 - Fusiform gyrus,  0.61798
+
+CH35 : 17 - Primary Visual Cortex (V1),  1
+
+CH36 : 17 - Primary Visual Cortex (V1),  1
+
+Fpz : 10 - Frontopolar area,  0.7918
+Fpz : 11 - Orbitofrontal area,  0.2082
+
+AF7 : 10 - Frontopolar area,  0.080972
+AF7 : 11 - Orbitofrontal area,  0.0040486
+AF7 : 46 - Dorsolateral prefrontal cortex,  0.48583
+AF7 : 47 - Inferior prefrontal gyrus,  0.42915
+
+AF8 : 10 - Frontopolar area,  0.074689
+AF8 : 46 - Dorsolateral prefrontal cortex,  0.53527
+AF8 : 47 - Inferior prefrontal gyrus,  0.39004
+
+AF3 : 10 - Frontopolar area,  0.83395
+AF3 : 46 - Dorsolateral prefrontal cortex,  0.16605
+
+AF4 : 10 - Frontopolar area,  0.83582
+AF4 : 46 - Dorsolateral prefrontal cortex,  0.16418
+
+Fz : 8 - Includes Frontal eye fields,  0.47036
+Fz : 9 - Dorsolateral prefrontal cortex,  0.52964
+
+F3 : 9 - Dorsolateral prefrontal cortex,  0.12727
+F3 : 45 - pars triangularis Broca's area,  0.24545
+F3 : 46 - Dorsolateral prefrontal cortex,  0.62727
+
+F4 : 9 - Dorsolateral prefrontal cortex,  0.22381
+F4 : 45 - pars triangularis Broca's area,  0.24762
+F4 : 46 - Dorsolateral prefrontal cortex,  0.52857
+
+FT7 : 21 - Middle Temporal gyrus,  0.79452
+FT7 : 38 - Temporopolar area,  0.20548
+
+FT8 : 21 - Middle Temporal gyrus,  0.80205
+FT8 : 38 - Temporopolar area,  0.19795
+
+C5 : 1 - Primary Somatosensory Cortex,  0.018576
+C5 : 2 - Primary Somatosensory Cortex,  0.4613
+C5 : 22 - Superior Temporal Gyrus,  0.13003
+C5 : 42 - Primary and Auditory Association Cortex,  0.003096
+C5 : 43 - Subcentral area,  0.27864
+C5 : 48 - Retrosubicular area,  0.10836
+
+C6 : 1 - Primary Somatosensory Cortex,  0.043077
+C6 : 2 - Primary Somatosensory Cortex,  0.58769
+C6 : 22 - Superior Temporal Gyrus,  0.089231
+C6 : 43 - Subcentral area,  0.27385
+C6 : 48 - Retrosubicular area,  0.0061538
+
+TP7 : 20 - Inferior Temporal gyrus,  0.40705
+TP7 : 21 - Middle Temporal gyrus,  0.19231
+TP7 : 37 - Fusiform gyrus,  0.40064
+
+TP8 : 20 - Inferior Temporal gyrus,  0.29043
+TP8 : 21 - Middle Temporal gyrus,  0.21782
+TP8 : 37 - Fusiform gyrus,  0.49175
+
+O1 : 17 - Primary Visual Cortex (V1),  0.94521
+O1 : 18 - Visual Association Cortex (V2),  0.054795
+
+O2 : 17 - Primary Visual Cortex (V1),  0.99333
+O2 : 18 - Visual Association Cortex (V2),  0.0066667
+
+Fp1 : 10 - Frontopolar area,  0.057432
+Fp1 : 11 - Orbitofrontal area,  0.94257
+
+Fp2 : 10 - Frontopolar area,  0.02027
+Fp2 : 11 - Orbitofrontal area,  0.97973
+
+AFz : 9 - Dorsolateral prefrontal cortex,  0.093863
+AFz : 10 - Frontopolar area,  0.90614
+
+F5 : 45 - pars triangularis Broca's area,  0.92657
+F5 : 46 - Dorsolateral prefrontal cortex,  0.073427
+
+F6 : 45 - pars triangularis Broca's area,  0.93333
+F6 : 46 - Dorsolateral prefrontal cortex,  0.066667
+
+F1 : 8 - Includes Frontal eye fields,  0.034632
+F1 : 9 - Dorsolateral prefrontal cortex,  0.96537
+
+F2 : 8 - Includes Frontal eye fields,  0.048246
+F2 : 9 - Dorsolateral prefrontal cortex,  0.95175
+
+FT9 : 20 - Inferior Temporal gyrus,  0.83462
+FT9 : 21 - Middle Temporal gyrus,  0.16538
+
+FT10 : 20 - Inferior Temporal gyrus,  0.83704
+FT10 : 21 - Middle Temporal gyrus,  0.16296
+
+T7 : 20 - Inferior Temporal gyrus,  0.12579
+T7 : 21 - Middle Temporal gyrus,  0.87421
+
+T8 : 20 - Inferior Temporal gyrus,  0.040625
+T8 : 21 - Middle Temporal gyrus,  0.94688
+T8 : 22 - Superior Temporal Gyrus,  0.0125
+
+CP5 : 22 - Superior Temporal Gyrus,  0.41587
+CP5 : 39 - Angular gyrus, part of Wernicke's area,  0.025397
+CP5 : 40 - Supramarginal gyrus part of Wernicke's area,  0.35873
+CP5 : 48 - Retrosubicular area,  0.2
+
+CP6 : 22 - Superior Temporal Gyrus,  0.48197
+CP6 : 39 - Angular gyrus, part of Wernicke's area,  0.019672
+CP6 : 40 - Supramarginal gyrus part of Wernicke's area,  0.37705
+CP6 : 48 - Retrosubicular area,  0.12131
+
+TP9 : 20 - Inferior Temporal gyrus,  0.27181
+TP9 : 37 - Fusiform gyrus,  0.72819
+
+TP10 : 20 - Inferior Temporal gyrus,  0.22819
+TP10 : 37 - Fusiform gyrus,  0.77181
+
+Oz : 17 - Primary Visual Cortex (V1),  1
