@@ -1,4 +1,4 @@
-##Episodic Endpoint-Focused Thinking Promotes Strategic Present Orientation: Behavioral and fNIRS Explorations##
+##Episodic Endpoint-Focused Thinking Promotes Strategic Present Orientation: Behavioral and fNIRS Evidence##
 
 Welcome to the GitHub repository for our research project. This repository contains the code and data used in our study.
 
@@ -44,7 +44,7 @@ Script: data_analysis_fNIRS.m
 -Generated edge files: FC_endpoint.edge, FC_present.edge (saved in Folder fNIRS_pics)
 -Generated node files: nodes_endpoint.node, nodes_present.node (saved in Folder fNIRS_pics)
 -Visualized maps: Brain_FC_endpoint.eps, Brain_FC_present.eps, FC_endpoint.pdf, FC_present.pdf, FC_significant_edges.pdf (saved in Folder fNIRS_pics)
--Final figure: Fig. 4 & Fig. A1 (integrated using Adobe Illustrator)
+-Final figure: Fig. 4 & Fig. S1 (integrated using Adobe Illustrator)
 
  ##Behavioral-Neural Correlational Analysis & Visualization##
 
