@@ -43,8 +43,8 @@ Script: data_analysis_fNIRS.m
 -Generated data files: FC_table.xlsx (sheets 'endpoint' & 'present')
 -Generated edge files: FC_endpoint.edge, FC_present.edge (saved in Folder fNIRS_pics)
 -Generated node files: nodes_endpoint.node, nodes_present.node (saved in Folder fNIRS_pics)
--Visualized maps: Brain_FC_endpoint.eps, Brain_FC_present (saved in Folder fNIRS_pics)
--Final figure: Fig. 4 (integrated using Adobe Illustrator)
+-Visualized maps: Brain_FC_endpoint.eps, Brain_FC_present.eps, FC_endpoint.pdf, FC_present.pdf, FC_significant_edges.pdf (saved in Folder fNIRS_pics)
+-Final figure: Fig. 4 & Fig. A1 (integrated using Adobe Illustrator)
 
  ##Behavioral-Neural Correlational Analysis & Visualization##
 
@@ -61,4 +61,4 @@ Files: SpatialRegistration_BA.txt, SpatialRegistration_MNI.txt
 Toolboxes: SPM8 and NIRS-SPM (MATLAB version R2013b)
 Reference: https://doi.org/10.1016/j.neuroimage.2008.08.036
 
-##Edited on November 9, 2025
+##Edited on November 10, 2025
