@@ -1,5 +1,7 @@
 ##Episodic Endpoint-Focused Thinking Promotes Strategic Present Orientation: Behavioral and fNIRS Evidence##
 
+##Disclaimer: The data provided here are part of an unpublished manuscript currently under review/preparation. Redistribution, citation, or use of these materials is not permitted without explicit consent from the corresponding author. Unauthorized use or distribution will be considered a violation of academic integrity and may result in legal consequences.##
+
 Welcome to the GitHub repository for our research project. This repository contains the code and data used in our study.
 
 ##Data and Code Usage##
@@ -61,4 +63,5 @@ Files: SpatialRegistration_BA.txt, SpatialRegistration_MNI.txt
 Toolboxes: SPM8 and NIRS-SPM (MATLAB version R2013b)
 Reference: https://doi.org/10.1016/j.neuroimage.2008.08.036
 
-##Edited on November 10, 2025
+
+##Edited on November 13, 2025
