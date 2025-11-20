@@ -1,4 +1,4 @@
-##Comparing Terror Management and Time Management Frameworks on Mortality Awareness: Behavioral and Hemodynamic Insights into Present–Future Tradeoffs##
+##Comparing Terror Management and Time Management from Three Aspects of Resource Management: Time Perception, Delay Discounting, and Monetary Allocation##
 
 ##Disclaimer: The data provided here are part of an unpublished manuscript currently under review/preparation. Redistribution, citation, or use of these materials is not permitted without explicit consent from the corresponding author. Unauthorized use or distribution will be considered a violation of academic integrity and may result in legal consequences.##
 
@@ -64,6 +64,7 @@ Toolboxes: SPM8 and NIRS-SPM (MATLAB version R2013b)
 Reference: https://doi.org/10.1016/j.neuroimage.2008.08.036
 
 
-##Edited on November 19, 2025
+##Edited on November 20, 2025
+
 
 
