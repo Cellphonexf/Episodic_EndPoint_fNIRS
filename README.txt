@@ -24,7 +24,7 @@ Script: data_analysis_fNIRS.m [script for 'data_analysis_fNIRS (no meditation ex
 - Data info and exclusions: fNIRS_participant_list.xlsx
 - Preprocessing summary: ProcStreamFunctionsSummary (in the folder)
 - Generated graphs: fNIRS_timeseries_CHs.pdf, FC endpoint.pdf, FC present.pdf (saved in Folder fNIRS_pics)
-- Final figure: Fig. 3 & Fig. 4 (integrated using Adobe Illustrator)
+- Final figure: Fig. S1 & Fig. 3 (integrated using Adobe Illustrator)
 
 ##Overall Brain Activation Visualization##
 
@@ -34,7 +34,7 @@ Script: visualization_fnirs.m
 -Toolboxes: EasyTopo (please refer to: 'EasyTopo 2.0 User Manual.pdf')
 -Generated data files: input_contrast_data.mat
 -Visualized maps: Activation_front.eps, Activation_left.eps (saved in Folder fNIRS_pics)
--Final figure: Fig. 3 (integrated using Adobe Illustrator)
+-Final figure: Fig. S1 (integrated using Adobe Illustrator)
 
 ##Overall Functional Connectivity Visualization##
 
@@ -46,7 +46,7 @@ Script: data_analysis_fNIRS.m
 -Generated edge files: FC_endpoint.edge, FC_present.edge (saved in Folder fNIRS_pics)
 -Generated node files: nodes_endpoint.node, nodes_present.node (saved in Folder fNIRS_pics)
 -Visualized maps: Brain_FC_endpoint.eps, Brain_FC_present.eps, FC_endpoint.pdf, FC_present.pdf, FC_significant_edges.pdf (saved in Folder fNIRS_pics)
--Final figure: Fig. 4 & Fig. S1 (integrated using Adobe Illustrator)
+-Final figure: Fig. 3 & Fig. S2 (integrated using Adobe Illustrator)
 
  ##Behavioral-Neural Correlational Analysis & Visualization##
 
@@ -55,7 +55,7 @@ Script: CorrelationAnalysis.R
 
 - Run the script segment by segment to follow each step of our analysis.
 - Generated graphs: MTG-k_endpoint.pdf, MTG-k_present.pdf
-- Final figure: Fig. 5 (integrated using Adobe Illustrator)
+- Final figure: Fig. 4 (integrated using Adobe Illustrator)
 
 ##Spatial Registration Results##
 
@@ -64,7 +64,4 @@ Toolboxes: SPM8 and NIRS-SPM (MATLAB version R2013b)
 Reference: https://doi.org/10.1016/j.neuroimage.2008.08.036
 
 
-##Edited on November 20, 2025
-
-
-
+##Edited on March 1, 2026

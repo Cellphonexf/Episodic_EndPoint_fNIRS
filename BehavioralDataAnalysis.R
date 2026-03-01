@@ -1,13 +1,13 @@
 # Episodic thinking: endpoint-focused vs. present-focused
 # Behavioral data analysis & viso
 # This script requires one file: "behavioral_rawdata.xlsx"
-# Programmed by Feng XIAO (updated on 2025.11.5)
+# Programmed by Feng XIAO (updated on 2026.2.26)
 ############################################################################################################
 
 ### Preparation
 ## Load required packages for analysis
 package_list <- c('car','tidyr','dplyr','readxl','effsize','afex','emmeans',
-                  'e1071','lmtest','broom',
+                  'e1071','lmtest','broom','boot','lme4','lmerTest','effectsize',
                   'ggplot2','patchwork')
 lapply(package_list, require, character.only = TRUE)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
@@ -58,6 +58,85 @@ rd_posttest_filtered <- rd_posttest %>%
 mean(rd_posttest_filtered$`Headsize (cm)`) #56.35
 sd(rd_posttest_filtered$`Headsize (cm)`) #1.70
 
+## Add order (EP vs PE) and create Post1/Post2 mapping
+## Condition column is in rd_pretest sheet: "EP" or "PE"
+## EP = Endpoint first, then Present
+## PE = Present first, then Endpoint
+rd_pretest_filtered <- rd_pretest_filtered %>%
+  mutate(
+    order = factor(Condition, levels = c("PE","EP"))  # PE: Present-first; EP: Endpoint-first
+  )
+# Carry order into posttest (same row order / same participants)
+rd_posttest_filtered <- rd_posttest_filtered %>%
+  mutate(order = rd_pretest_filtered$order)
+# Helper: map (Present, Endpoint) -> (Post1, Post2) by order
+map_post12 <- function(present, endpoint, order){
+  post1 <- ifelse(order == "EP", endpoint, present)
+  post2 <- ifelse(order == "EP", present, endpoint)
+  list(post1 = post1, post2 = post2)
+}
+
+## Mediation analysis
+# M = difference in involvement level (Endpoint - Present)
+# Y1 = difference in interval-timing speed (Endpoint - Present)
+# Y2 = difference in logk (Endpoint - Present)
+id_vec <- 1:nrow(rd_posttest_filtered) #id creation
+# M
+M_vec <- rd_posttest_filtered$Involvement_E - rd_posttest_filtered$Involvement_P
+# Y1
+Y1_vec <- (rd_posttest_filtered$TimeE_diff1 + rd_posttest_filtered$TimeE_diff2)/2 -
+  (rd_posttest_filtered$TimeP_diff1 + rd_posttest_filtered$TimeP_diff2)/2
+# Y2
+df_k <- data.frame(
+  id       = id_vec,
+  Pretest  = rd_k$Pretest,
+  Present  = rd_k$Present,
+  Endpoint = rd_k$Endpoint
+)
+df_logk <- df_k %>%
+  mutate(
+    logk_Pretest  = log(Pretest),
+    logk_Present  = log(Present),
+    logk_Endpoint = log(Endpoint)
+  )
+Y2_vec <- df_logk$logk_Endpoint - df_logk$logk_Present
+df_med_Y1 <- data.frame(id = id_vec, M = M_vec, Y1 = Y1_vec) %>% na.omit()
+df_med_Y2 <- data.frame(id = id_vec, M = M_vec, Y2 = Y2_vec) %>% na.omit()
+# Function
+run_ws_mediation <- function(df, y_name, R = 5000, seed = 666) {
+  set.seed(seed)
+  y <- df[[y_name]]
+  cat("\n====================================================\n")
+  cat(sprintf("Mediation outcome: %s\n", y_name))
+  cat(sprintf("N (complete cases) = %d\n", nrow(df)))
+  cat("----------------------------------------------------\n")
+  # Path a: is mean(M) different from 0?
+  cat("Path a (mean(M) vs 0):\n")
+  print(t.test(df$M))
+  # Path b: does M predict Y?
+  cat("\nPath b (Y ~ M):\n")
+  lm_b <- lm(y ~ M, data = df)
+  print(summary(lm_b))
+  # Total effect: is mean(Y) different from 0?
+  cat("\nTotal effect (mean(Y) vs 0):\n")
+  print(t.test(y))
+  # Bootstrap indirect effect a*b
+  med_fun <- function(data, i) {
+    d <- data[i, ]
+    a <- mean(d$M)
+    b <- coef(lm(d[[y_name]] ~ d$M))[2]
+    a * b
+  }
+  boot_res <- boot(df, med_fun, R = R)
+  cat("\nBootstrap indirect effect (a*b), percentile CI:\n")
+  print(boot.ci(boot_res, type = "perc"))
+  invisible(list(lm_b = lm_b, boot_res = boot_res))
+}
+# Analysis
+res_Y1 <- run_ws_mediation(df_med_Y1, "Y1", R = 5000)
+res_Y2 <- run_ws_mediation(df_med_Y2, "Y2", R = 5000)
+
+
 ### Group comparisons
 ## Involvement level
 inv <- c(rd_posttest_filtered$Involvement_P, rd_posttest_filtered$Involvement_E)
@@ -70,99 +149,146 @@ sd(rd_posttest_filtered$Involvement_E) #Endpoint: 14.52
 t.test(rd_posttest_filtered$Involvement_E,
        rd_posttest_filtered$Involvement_P,
        paired = TRUE, alternative = "two.sided") #NS
-
+# Distribution checks (bounded/ceiling + shape)
+invP <- rd_posttest_filtered$Involvement_P
+invE <- rd_posttest_filtered$Involvement_E
+invD <- invE - invP
+# Skewness (less than 3 is acceptable)
+cat(sprintf("Skewness P=%.2f, E=%.2f, Diff=%.2f\n",
+            skewness(invP, na.rm=TRUE),
+            skewness(invE, na.rm=TRUE),
+            skewness(invD, na.rm=TRUE)))
+ #Skewness P=-0.45, E=-0.55, Diff=0.56
+# Ceiling / floor proportions (helps justify bounded-scale concerns)
+cat(sprintf("Ceiling(>=95) P=%.1f%%, E=%.1f%%\n",
+            100*mean(invP >= 95, na.rm=TRUE),
+            100*mean(invE >= 95, na.rm=TRUE)))
+ #Ceiling(>=95) P=13.2%, E=10.5%
+cat(sprintf("Floor(<=5)  P=%.1f%%, E=%.1f%%\n",
+            100*mean(invP <= 5,  na.rm=TRUE),
+            100*mean(invE <= 5,  na.rm=TRUE)))
+ #Floor(<=5)  P=0.0%, E=0.0%
+wilcox.test(invE,
+            invP,
+            paired = TRUE,
+            exact = FALSE,
+            alternative = "two.sided") #NS
 
 ## Duration estimation
 ## Analysis
-# Before vs. After (Present) vs. After (Endpoint)
-df_time_diff1 <- data.frame(rd_pretest_filtered$Time_diff1,
-                            rd_posttest_filtered$TimeP_diff1,
-                            rd_posttest_filtered$TimeE_diff1)
-colnames(df_time_diff1) <- c('Pretest','Present','Endpoint')
-df_time_diff2 <- data.frame(rd_pretest_filtered$Time_diff2,
-                            rd_posttest_filtered$TimeP_diff2,
-                            rd_posttest_filtered$TimeE_diff2)
-colnames(df_time_diff2) <- c('Pretest','Present','Endpoint')
-df_time_diff1$id <- 1:nrow(df_time_diff1)
-df_time_diff2$id <- 1:nrow(df_time_diff2)
-df_time1 <- rbind(df_time_diff1, df_time_diff2)
-df_time1 <- na.omit(df_time1) #delete the missing data
-df_time2 <- pivot_longer(df_time1,
-                         cols = c("Pretest", "Present", "Endpoint"),
-                         names_to = "group",
-                         values_to = "timing_speed")
-# Skewness (less than 3 is acceptable)
-skewness(df_time1$Pretest) #-0.08
-skewness(df_time1$Present) #-0.16
-skewness(df_time1$Endpoint) #-0.66
-# Lavene's tests
-leveneTest(df_time2$timing_speed, factor(df_time2$group)) #equal sds
-# ANOVA (within-group factor: pretest, present, endpoint)
-aov_time <- aov_ez(
-  id = "id",                          
-  dv = "timing_speed",
-  within = "group",
-  data = df_time2,
-  type = 3
+# Average 2 trials within each condition per subj
+time_pre <- rowMeans(cbind(rd_pretest_filtered$Time_diff1, rd_pretest_filtered$Time_diff2), na.rm=TRUE)
+time_P <- rowMeans(cbind(rd_posttest_filtered$TimeP_diff1, rd_posttest_filtered$TimeP_diff2), na.rm=TRUE)
+time_E <- rowMeans(cbind(rd_posttest_filtered$TimeE_diff1, rd_posttest_filtered$TimeE_diff2), na.rm=TRUE)
+df_time_subj <- data.frame(
+  id    = 1:nrow(rd_pretest_filtered),
+  order = rd_pretest_filtered$order,
+  Pretest  = time_pre,
+  Present  = time_P,
+  Endpoint = time_E
 )
-summary(aov_time)
-  #F(2,74)=6.63, p=.002;but Mauchly's test is significant (p = .014)
-  # Greenhouse-Geisser results for corection: p=.004 
-afex::nice(aov_time, es = "pes") #F(1.65,61.92)=6.63, p=.004, partial etasq=0.15
-pairs(emmeans(aov_time, ~ group), adjust = "bonferroni")
-cohen.d(df_time1$Pretest, df_time1$Endpoint,
-        paired = TRUE,
-        hedges.correction = FALSE)
-  #Endpoint(before>after): t(37)=3.11, p=.011, d=0.51
-
-##Plotting
-dat_mean <- df_time1 %>%
-  group_by(id) %>%
-  summarise(
-    Pretest  = mean(Pretest,  na.rm = TRUE),
-    Present  = mean(Present,  na.rm = TRUE),
-    Endpoint = mean(Endpoint, na.rm = TRUE),
-    .groups = "drop"
+df_time_long <- df_time_subj %>%
+  tidyr::pivot_longer(cols = c("Pretest","Present","Endpoint"),
+                      names_to = "condition",
+                      values_to = "timing_speed") %>%
+  mutate(condition = factor(condition, levels = c("Pretest","Present","Endpoint")))
+df_time_long <- df_time_long %>%
+  left_join(
+    data.frame(
+      id = 1:nrow(rd_posttest_filtered),
+      invP = rd_posttest_filtered$Involvement_P,
+      invE = rd_posttest_filtered$Involvement_E
+    ),
+    by = "id"
   ) %>%
-  pivot_longer(c(Pretest, Present, Endpoint),
-               names_to = "group", values_to = "timing_speed")
-lines_present <- dat_mean %>%
-  filter(group %in% c("Pretest", "Present")) %>%
-  mutate(Intervention = "Present",
-         Time = if_else(group == "Pretest", "Before", "After"))
-lines_endpoint <- dat_mean %>%
-  filter(group %in% c("Pretest", "Endpoint")) %>%
-  mutate(Intervention = "Endpoint",
-         Time = if_else(group == "Pretest", "Before", "After"))
-df_lines <- bind_rows(lines_present, lines_endpoint) %>%
   mutate(
-    Time = factor(Time, levels = c("Before", "After")),
-    Intervention = factor(Intervention, levels = c("Endpoint", "Present"))
+    involvement = dplyr::case_when(
+      condition == "Present"  ~ invP,
+      condition == "Endpoint" ~ invE,
+      TRUE ~ NA_real_
+    )
   )
-df_sum <- df_lines %>%
-  group_by(Intervention, Time) %>%
-  summarise(
+# Skewness checks
+skewness(df_time_subj$Pretest,  na.rm = TRUE) #-0.22
+skewness(df_time_subj$Present,  na.rm = TRUE) #-0.14
+skewness(df_time_subj$Endpoint, na.rm = TRUE) #-0.55
+# Main model: condition + order
+m_time0 <- lmer(timing_speed ~ condition + order + (1|id), data = df_time_long, REML = FALSE)
+anova(m_time0)
+anova_res <- anova(m_time0)
+eta_squared(anova_res, partial = TRUE) #condition: F(2,76)=6.58, p=.002,etas=0.15
+emm_time <- emmeans(m_time0, ~ condition)
+pairs(emm_time, adjust = "bonferroni") 
+eff_size(emm_time, sigma = sigma(m_time0), edf = df.residual(m_time0))
+ #endpoint(pre-post): t(78)=3.44,p=.003,d=0.80
+ #present(pre-post): t(78)=2.57,p=.036,d=0.60
+# Add involvement as covariate (post conditions only)
+df_time_post <- df_time_long %>% filter(condition %in% c("Present","Endpoint"))
+m_time_inv <- lmer(timing_speed ~ condition + order + scale(involvement) + (1|id),
+                   data = df_time_post, REML = FALSE)
+anova(m_time_inv) #NS
+
+## Plotting
+df_time_seq_cond <- dplyr::bind_rows(
+  tibble::tibble(
+    id        = rd_pretest_filtered$SubjectNumber,
+    order     = rd_pretest_filtered$order,
+    condition = "Endpoint",
+    Pretest   = time_pre,
+    Post1     = dplyr::if_else(order == "EP", time_E, NA_real_),  # endpoint first
+    Post2     = dplyr::if_else(order == "PE", time_E, NA_real_)   # endpoint second
+  ),
+  tibble::tibble(
+    id        = rd_pretest_filtered$SubjectNumber,
+    order     = rd_pretest_filtered$order,
+    condition = "Present",
+    Pretest   = time_pre,
+    Post1     = dplyr::if_else(order == "PE", time_P, NA_real_),  # present first
+    Post2     = dplyr::if_else(order == "EP", time_P, NA_real_)   # present second
+  )
+) %>%
+  tidyr::pivot_longer(
+    cols = c("Pretest","Post1","Post2"),
+    names_to = "timepoint",
+    values_to = "timing_speed"
+  ) %>%
+  dplyr::mutate(
+    timepoint = factor(timepoint, levels = c("Pretest","Post1","Post2")),
+    condition = factor(condition, levels = c("Endpoint","Present"))
+  )
+
+df_time_seq_sum <- df_time_seq_cond %>%
+  dplyr::group_by(condition, timepoint) %>%
+  dplyr::summarise(
     mean = mean(timing_speed, na.rm = TRUE),
-    se   = sd(timing_speed, na.rm = TRUE) / sqrt(n()),
+    se   = sd(timing_speed, na.rm = TRUE) / sqrt(sum(!is.na(timing_speed))),
+    n    = sum(!is.na(timing_speed)),
     .groups = "drop"
   )
-pd <- position_dodge(width = 0.3)
 
-p_time<-ggplot(df_sum, aes(x = Time, y = mean,
-                           color = Intervention, group = Intervention)) +
+pd <- position_dodge(width = 0.30)
+
+p_time <- ggplot(df_time_seq_sum,
+                 aes(x = timepoint, y = mean,
+                     color = condition, group = condition)) +
   geom_line(linewidth = 0.45, position = pd) +
-  geom_point(aes(shape = Intervention),
-             size = 1.0, stroke = 0.7, position = pd) +   
+  geom_point(aes(shape = condition),
+             size = 1.0, stroke = 0.7, position = pd) +
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
                 width = 0.10, linewidth = 0.45, position = pd) +
-  scale_x_discrete(limits = c("Before", "After"),
-                   labels = c("Before", "After")) +
+  scale_x_discrete(labels = c("Pretest" = "Pretest",
+                              "Post1"   = "Posttest 1",
+                              "Post2"   = "Posttest 2")) +
   scale_y_continuous(limits = c(-4, 0),
                      breaks = seq(-4, 0, by = 1),
                      expand = c(0, 0)) +
-  scale_color_manual(values = c("Endpoint" = "#B22222", "Present" = "#4169E1")) +
-  scale_shape_manual(values = c("Endpoint" = 1, "Present" = 2)) + 
-  labs(x = NULL, y = "Duration estimation difference (s)", title = NULL) +
+  labs(x = NULL,
+       y = "Duration estimation difference (s)",
+       title = NULL) +
+  scale_color_manual(values = c("Endpoint" = "#B22222",
+                                "Present"  = "#4169E1")) +
+  scale_shape_manual(values = c("Endpoint" = 1,
+                                "Present"  = 2)) +
   theme_classic(base_size = 8) +
   theme(
     axis.line        = element_line(colour = "black", linewidth = 0.35),
@@ -175,124 +301,190 @@ p_time<-ggplot(df_sum, aes(x = Time, y = mean,
   ) +
   patchwork::plot_annotation(
     title = "(A) Interval-timing speed",
-    theme = theme(plot.title = element_text(size = 7, colour = "black",
-                                            face = "bold",
-                                            margin = ggplot2::margin(b = 2)))
+    theme = theme(
+      plot.title = element_text(size = 7,
+                                colour = "black",
+                                face = "bold",
+                                margin = ggplot2::margin(b = 2))
+    )
   )
 ggsave("pic_time.pdf", plot = p_time, width = 2, height = 2, units = "in", device = cairo_pdf)
 
-
-## Discounting rates (k-values)
+## Delay discounting
 ## Analysis
-df_k <- data.frame(rd_k$Pretest, rd_k$Present, rd_k$Endpoint)
-colnames(df_k) <- c('Pretest','Present','Endpoint')
-df_logk <- log(df_k) #log k values
-df_logk$id <- 1:nrow(df_logk)
-df_logk1 <- pivot_longer(df_logk, cols = c("Pretest", "Present", "Endpoint"),
-                         names_to = "group",
-                         values_to = "discounting_rate")
-# Skewness (less than 3 is acceptable)
-skewness(df_logk$Pretest) #-0.62
-skewness(df_logk$Present) #0.93
-skewness(df_logk$Endpoint) #0.90
-# Lavene's tests
-leveneTest(df_logk1$discounting_rate, factor(df_logk1$group)) #equal sds
-# ANOVA (within-group factor: pretest, present, endpoint)
-aov_logk <- aov_ez(
-  id = "id",                          
-  dv = "discounting_rate",
-  within = "group",
-  data = df_logk1,
-  type = 3
+df_k <- data.frame(
+  id = 1:nrow(rd_k),
+  order = rd_pretest_filtered$order,
+  Pretest  = rd_k$Pretest,
+  Present  = rd_k$Present,
+  Endpoint = rd_k$Endpoint
 )
-summary(aov_logk)
-  #F(2,74)=6.84, p=.002
-afex::nice(aov_logk, es = "pes") #partial etasq=0.16.
-pairs(emmeans(aov_logk, ~ group), adjust = "bonferroni")
-cohen.d(df_logk$Pretest, df_logk$Endpoint,
-        paired = TRUE,
-        hedges.correction = FALSE)
-  #Endpoint(before<after): t(37)=3.29, p=.007, d=0.45
-cohen.d(df_logk$Pretest, df_logk$Present,
-        paired = TRUE,
-        hedges.correction = FALSE)
-  #Present(before<after): t(37)=3.27, p=.007, d=0.50
-
-##Plotting
-dat_mean <- df_logk %>%
-  group_by(id) %>%
-  summarise(
-    Pretest  = mean(Pretest,  na.rm = TRUE),
-    Present  = mean(Present,  na.rm = TRUE),
-    Endpoint = mean(Endpoint, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  pivot_longer(c(Pretest, Present, Endpoint),
-               names_to = "group", values_to = "discounting_rate")
-lines_present <- dat_mean %>%
-  filter(group %in% c("Pretest", "Present")) %>%
-  mutate(Intervention = "Present",
-         Time = if_else(group == "Pretest", "Before", "After"))
-lines_endpoint <- dat_mean %>%
-  filter(group %in% c("Pretest", "Endpoint")) %>%
-  mutate(Intervention = "Endpoint",
-         Time = if_else(group == "Pretest", "Before", "After"))
-df_lines <- bind_rows(lines_present, lines_endpoint) %>%
+# log-transform
+df_k$Pretest  <- log(df_k$Pretest)
+df_k$Present  <- log(df_k$Present)
+df_k$Endpoint <- log(df_k$Endpoint)
+df_logk_long <- df_k %>%
+  pivot_longer(cols = c("Pretest","Present","Endpoint"),
+               names_to = "condition",
+               values_to = "discounting_rate") %>%
+  mutate(condition = factor(condition, levels=c("Pretest","Present","Endpoint")))
+# Skewness checks
+skewness(df_k$Pretest,  na.rm = TRUE) #-0.62
+skewness(df_k$Present,  na.rm = TRUE) #0.93
+skewness(df_k$Endpoint, na.rm = TRUE) #0.90
+# Main model: condition + order
+m_logk0 <- lmer(discounting_rate ~ condition + order + (1|id), data=df_logk_long, REML=FALSE)
+anova(m_logk0)
+anova_res <- anova(m_logk0)
+eta_squared(anova_res, partial = TRUE) #condition: F(2,76)=7.02, p=.002, etas=0.16
+emm_logk <- emmeans(m_logk0, ~ condition)
+pairs(emm_logk, adjust = "bonferroni")
+eff_size(emm_logk, sigma = sigma(m_logk0), edf = df.residual(m_logk0))
+ #endpoint(pre-post): t(78)=-3.06,p=.009,d=0.71
+ #present(pre-post): t(78)=-3.33,p=.004,d=0.77
+# Add involvement as covariate (post conditions only)
+inv_map <- data.frame(
+  id   = 1:nrow(rd_posttest_filtered),
+  invP = rd_posttest_filtered$Involvement_P,
+  invE = rd_posttest_filtered$Involvement_E
+)
+df_logk_long <- df_logk_long %>%
+  left_join(inv_map, by = "id")
+df_logk_post <- df_logk_long %>%
+  filter(condition %in% c("Present","Endpoint")) %>%
   mutate(
-    Time = factor(Time, levels = c("Before", "After")),
-    Intervention = factor(Intervention, levels = c("Endpoint", "Present"))
+    involvement = case_when(
+      condition == "Present"  ~ invP,
+      condition == "Endpoint" ~ invE,
+      TRUE ~ NA_real_
+    )
   )
-df_sum <- df_lines %>%
-  group_by(Intervention, Time) %>%
-  summarise(
+df_logk_post$condition <- droplevels(df_logk_post$condition)
+m_logk_inv <- lmer(discounting_rate ~ condition + order +
+                     scale(involvement) + (1|id),
+                   data = df_logk_post,
+                   REML = FALSE)
+
+anova(m_logk_inv) #NS
+
+## Plotting
+tmp_post_k <- map_post12(df_k$Present, df_k$Endpoint, df_k$order)
+
+df_logk_seq_cond <- dplyr::bind_rows(
+  tibble::tibble(
+    id        = df_k$id,
+    order     = df_k$order,
+    condition = "Endpoint",
+    Pretest   = df_k$Pretest,
+    Post1     = dplyr::if_else(order == "EP", tmp_post_k$post1, NA_real_), # EP: Endpoint first
+    Post2     = dplyr::if_else(order == "PE", tmp_post_k$post2, NA_real_)  # PE: Endpoint second
+  ),
+  tibble::tibble(
+    id        = df_k$id,
+    order     = df_k$order,
+    condition = "Present",
+    Pretest   = df_k$Pretest,
+    Post1     = dplyr::if_else(order == "PE", tmp_post_k$post1, NA_real_), # PE: Present first
+    Post2     = dplyr::if_else(order == "EP", tmp_post_k$post2, NA_real_)  # EP: Present second
+  )
+) %>%
+  tidyr::pivot_longer(
+    cols = c("Pretest","Post1","Post2"),
+    names_to = "timepoint",
+    values_to = "discounting_rate"
+  ) %>%
+  dplyr::mutate(
+    timepoint = factor(timepoint, levels = c("Pretest","Post1","Post2")),
+    condition = factor(condition, levels = c("Endpoint","Present"))
+  )
+
+df_logk_seq_sum <- df_logk_seq_cond %>%
+  dplyr::group_by(condition, timepoint) %>%
+  dplyr::summarise(
     mean = mean(discounting_rate, na.rm = TRUE),
-    se   = sd(discounting_rate, na.rm = TRUE) / sqrt(n()),
+    se   = sd(discounting_rate, na.rm = TRUE) / sqrt(sum(!is.na(discounting_rate))),
+    n    = sum(!is.na(discounting_rate)),
     .groups = "drop"
   )
 
-p_logk<-ggplot(df_sum, aes(x = Time, y = mean,
-                           color = Intervention, group = Intervention)) +
-  geom_line(linewidth = 0.45, position = pd) +
-  geom_point(aes(shape = Intervention),
-             size = 1.0, stroke = 0.7, position = pd) +   
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
-                width = 0.10, linewidth = 0.45, position = pd) +
-  scale_x_discrete(limits = c("Before", "After"),
-                   labels = c("Before", "After")) +
-  scale_y_continuous(limits = c(-8, 0),
-                     breaks = seq(-8, 0, by = 2),
-                     expand = c(0, 0)) +
-  scale_color_manual(values = c("Endpoint" = "#B22222", "Present" = "#4169E1")) +
-  scale_shape_manual(values = c("Endpoint" = 1, "Present" = 2)) + 
-  labs(x = NULL, y = "Log k-value", title = NULL) +
-  theme_classic(base_size = 8) +
-  theme(
-    axis.line        = element_line(colour = "black", linewidth = 0.35),
-    axis.title       = element_text(size = 7, colour = "black"),
-    axis.text        = element_text(size = 7, colour = "black"),
-    panel.background = element_rect(fill = "transparent"),
-    plot.background  = element_rect(fill = "transparent", colour = NA),
+pd <- position_dodge(width = 0.30)
+
+p_logk <- ggplot2::ggplot(
+  df_logk_seq_sum,
+  ggplot2::aes(x = timepoint, y = mean, color = condition, group = condition)
+) +
+  ggplot2::geom_line(linewidth = 0.45, position = pd) +
+  ggplot2::geom_point(
+    ggplot2::aes(shape = condition),
+    size = 1.0, stroke = 0.7, position = pd
+  ) +
+  ggplot2::geom_errorbar(
+    ggplot2::aes(ymin = mean - se, ymax = mean + se),
+    width = 0.10, linewidth = 0.45, position = pd
+  ) +
+  ggplot2::scale_x_discrete(labels = c(
+    "Pretest" = "Pretest",
+    "Post1"   = "Posttest 1",
+    "Post2"   = "Posttest 2"
+  )) +
+  ggplot2::scale_y_continuous(
+    limits = c(-8, 0),
+    breaks = seq(-8, 0, by = 2),
+    expand = c(0, 0)
+  ) +
+  ggplot2::labs(x = NULL, y = "Log k-value", title = NULL) +
+  ggplot2::scale_color_manual(values = c(
+    "Endpoint" = "#B22222",
+    "Present"  = "#4169E1"
+  )) +
+  ggplot2::scale_shape_manual(values = c(
+    "Endpoint" = 1,
+    "Present"  = 2
+  )) +
+  ggplot2::theme_classic(base_size = 8) +
+  ggplot2::theme(
+    axis.line        = ggplot2::element_line(colour = "black", linewidth = 0.35),
+    axis.title       = ggplot2::element_text(size = 7, colour = "black"),
+    axis.text        = ggplot2::element_text(size = 7, colour = "black"),
+    panel.background = ggplot2::element_rect(fill = "transparent"),
+    plot.background  = ggplot2::element_rect(fill = "transparent", colour = NA),
     legend.position  = "none",
     plot.margin      = ggplot2::margin(3, 3, 2, 2)
   ) +
   patchwork::plot_annotation(
     title = "(B) Delay discounting rate",
-    theme = theme(plot.title = element_text(size = 7, colour = "black",
-                                            face = "bold",
-                                            margin = ggplot2::margin(b = 2)))
+    theme = ggplot2::theme(
+      plot.title = ggplot2::element_text(
+        size = 7, colour = "black", face = "bold",
+        margin = ggplot2::margin(b = 2)
+      )
+    )
   )
 ggsave("pic_logk.pdf", plot = p_logk, width = 2, height = 2, units = "in", device = cairo_pdf)
 
-
 ## Monetary allocation task
 ## Analysis
-if (!"id" %in% names(rd_pretest_filtered))  rd_pretest_filtered$id  <- seq_len(nrow(rd_pretest_filtered))
-if (!"id" %in% names(rd_posttest_filtered)) rd_posttest_filtered$id <- rd_pretest_filtered$id
-# Pretest
+# ID + order (use SubjectNumber as the only id key)
+if (!"SubjectNumber" %in% names(rd_pretest_filtered)) {
+  stop("rd_pretest_filtered must contain SubjectNumber.")
+}
+if (!"SubjectNumber" %in% names(rd_posttest_filtered)) {
+  rd_posttest_filtered$SubjectNumber <- rd_pretest_filtered$SubjectNumber
+}
+
+rd_pretest_filtered$id  <- rd_pretest_filtered$SubjectNumber
+rd_posttest_filtered$id <- rd_posttest_filtered$SubjectNumber
+
+if ("Condition" %in% names(rd_pretest_filtered) && !"order" %in% names(rd_pretest_filtered)) {
+  rd_pretest_filtered$order <- rd_pretest_filtered$Condition
+}
+rd_pretest_filtered$order <- factor(rd_pretest_filtered$order, levels = c("EP","PE"))
+
+# Pretest (proportion diffs)
 pre_DS  <- rd_pretest_filtered$Prop_ShortSaving - rd_pretest_filtered$Prop_ShortSpend
 pre_DL  <- rd_pretest_filtered$Prop_LongSaving  - rd_pretest_filtered$Prop_ShortSpend
 pre_DSL <- rd_pretest_filtered$Prop_LongSaving  - rd_pretest_filtered$Prop_ShortSaving
-# Present
+# Present 
 pres_DS  <- rd_posttest_filtered$PropP_ShortSaving - rd_posttest_filtered$PropP_ShortSpend
 pres_DL  <- rd_posttest_filtered$PropP_LongSaving  - rd_posttest_filtered$PropP_ShortSpend
 pres_DSL <- rd_posttest_filtered$PropP_LongSaving  - rd_posttest_filtered$PropP_ShortSaving
@@ -300,106 +492,222 @@ pres_DSL <- rd_posttest_filtered$PropP_LongSaving  - rd_posttest_filtered$PropP_
 end_DS  <- rd_posttest_filtered$PropE_ShortSaving - rd_posttest_filtered$PropE_ShortSpend
 end_DL  <- rd_posttest_filtered$PropE_LongSaving  - rd_posttest_filtered$PropE_ShortSpend
 end_DSL <- rd_posttest_filtered$PropE_LongSaving  - rd_posttest_filtered$PropE_ShortSaving
+# involvement map keyed by SubjectNumber
+inv_map <- tibble::tibble(
+  id   = rd_posttest_filtered$SubjectNumber,
+  invP = rd_posttest_filtered$Involvement_P,
+  invE = rd_posttest_filtered$Involvement_E
+) %>% dplyr::distinct(id, .keep_all = TRUE)
 
-mk_long <- function(id, pre, pres, end, metric_name){
-  tibble(
-    id = id,
+# Helper: build long dataframe with order + involvement (post only)
+mk_long_alloc <- function(id, order, pre, pres, end, metric_name, inv_map) {
+  
+  df_wide <- tibble::tibble(
+    id       = id,
+    order    = order,
     Pretest  = pre,
     Present  = pres,
     Endpoint = end
-  ) |>
-    drop_na() |>
-    pivot_longer(c(Pretest, Present, Endpoint),
-                 names_to = "Session", values_to = "Score") |>
-    mutate(Session = factor(Session, levels = c("Pretest","Present","Endpoint")),
-           Metric  = metric_name)
+  ) %>%
+    tidyr::drop_na()
+  
+  df_long <- df_wide %>%
+    tidyr::pivot_longer(
+      cols = c("Pretest","Present","Endpoint"),
+      names_to  = "condition",
+      values_to = "Score"
+    ) %>%
+    dplyr::mutate(
+      condition = factor(condition, levels = c("Pretest","Present","Endpoint")),
+      Metric    = metric_name
+    ) %>%
+    dplyr::left_join(inv_map, by = "id") %>%
+    dplyr::mutate(
+      involvement = dplyr::case_when(
+        condition == "Present"  ~ invP,
+        condition == "Endpoint" ~ invE,
+        TRUE ~ NA_real_
+      )
+    )
+  
+  list(wide = df_wide, long = df_long)
 }
 
-df_DS_long  <- mk_long(rd_pretest_filtered$id, pre_DS,  pres_DS,  end_DS,  "DS")
-df_DL_long  <- mk_long(rd_pretest_filtered$id, pre_DL,  pres_DL,  end_DL,  "DL")
-df_DSL_long <- mk_long(rd_pretest_filtered$id, pre_DSL, pres_DSL, end_DSL, "DSL")
+# Build data
+alloc_DS  <- mk_long_alloc(
+  id    = rd_pretest_filtered$SubjectNumber,
+  order = rd_pretest_filtered$order,
+  pre   = pre_DS,  pres = pres_DS,  end = end_DS,
+  metric_name = "DS",
+  inv_map = inv_map
+)
+alloc_DL  <- mk_long_alloc(
+  id    = rd_pretest_filtered$SubjectNumber,
+  order = rd_pretest_filtered$order,
+  pre   = pre_DL,  pres = pres_DL,  end = end_DL,
+  metric_name = "DL",
+  inv_map = inv_map
+)
+alloc_DSL <- mk_long_alloc(
+  id    = rd_pretest_filtered$SubjectNumber,
+  order = rd_pretest_filtered$order,
+  pre   = pre_DSL, pres = pres_DSL, end = end_DSL,
+  metric_name = "DSL",
+  inv_map = inv_map
+)
 
-## Monetary allocation task ¡ª DS
-## DS = short-term saving ??? short-term spending
-df_DS_wide <- tidyr::pivot_wider(
-  data  = as.data.frame(df_DS_long),
-  id_cols = id,
-  names_from  = Session,
-  values_from = Score
-)
-# Skewness (less than 3 is acceptable)
-skewness(df_DS_wide$Pretest,  na.rm = TRUE) #-2.13
-skewness(df_DS_wide$Present,  na.rm = TRUE) #-0.97
-skewness(df_DS_wide$Endpoint, na.rm = TRUE) #-0.44
-# Levene's tests
-leveneTest(df_DS_long$Score, df_DS_long$Session) #equal sds
-# ANOVA (within-group factor: pretest, present, endpoint)
-aov_DS <- aov_ez(
-  id     = "id",
-  dv     = "Score",
-  within = "Session",
-  data   = df_DS_long,
-  type   = 3
-)
-summary(aov_DS) #NS; but short-term saving>spending: F(1,37)=17.27, p<.001
-# partial etasq for the intercept effect
-F_intercept <- 17.27
-df_error <- 37
-eta_sq <- F_intercept / (F_intercept + df_error)
-eta_sq #0.32
+# Use sum-to-zero contrasts for Type III tests (restore later if needed)
+op_contr <- options(contrasts = c("contr.sum","contr.poly"))
 
-## Monetary allocation task ¡ª DL
-## DL = long-term saving ??? short-term spending
-df_DL_wide <- tidyr::pivot_wider(
-  data  = as.data.frame(df_DL_long),
-  id_cols = id,
-  names_from  = Session,
-  values_from = Score
-)
-# Skewness
-skewness(df_DL_wide$Pretest,  na.rm = TRUE) #-1.50
-skewness(df_DL_wide$Present,  na.rm = TRUE) #-1.16
-skewness(df_DL_wide$Endpoint, na.rm = TRUE) #-0.81
-# Levene's tests
-leveneTest(df_DL_long$Score, df_DL_long$Session) #equal sds
-# ANOVA (within-group factor: pretest, present, endpoint)
-aov_DL <- aov_ez(
-  id     = "id",
-  dv     = "Score",
-  within = "Session",
-  data   = df_DL_long,
-  type   = 3
-)
-summary(aov_DL) #NS,but long-term saving>spending: F(1,37)=13.38, p=.001
-# partial etasq for the intercept effect
-F_intercept <- 13.38
-df_error <- 37
-eta_sq <- F_intercept / (F_intercept + df_error)
-eta_sq #0.27
+# DS = short-term saving - short-term spending
+df_DS_wide <- alloc_DS$wide
+df_DS_long <- alloc_DS$long
+# Skewness checks (per condition)
+skewness(df_DS_wide$Pretest,  na.rm = TRUE)  # -2.13
+skewness(df_DS_wide$Present,  na.rm = TRUE)  # -0.97
+skewness(df_DS_wide$Endpoint, na.rm = TRUE)  # -0.44
+# Main model: condition + order
+df_DS_long$condition <- factor(df_DS_long$condition, levels = c("Pretest","Present","Endpoint"))
+df_DS_long$order     <- factor(df_DS_long$order, levels = c("EP","PE"))
+m_DS0 <- lmer(Score ~ condition + order + (1|id), data = df_DS_long, REML = FALSE)
 
-## Monetary allocation task ¡ª DSL
-## DSL = long-term saving ??? short-term saving
-df_DSL_wide <-  tidyr::pivot_wider(
-  data  = as.data.frame(df_DSL_long),
-  id_cols = id,
-  names_from  = Session,
-  values_from = Score
-)
-# Skewness
-skewness(df_DSL_wide$Pretest,  na.rm = TRUE) #-0.22
-skewness(df_DSL_wide$Present,  na.rm = TRUE) #-0.34
-skewness(df_DSL_wide$Endpoint, na.rm = TRUE) #-0.25
-# Levene's tests
-leveneTest(df_DSL_long$Score, df_DSL_long$Session) #equal sds
-# ANOVA (within-group factor: pretest, present, endpoint)
-aov_DSL <- aov_ez(
-  id     = "id",
-  dv     = "Score",
-  within = "Session",
-  data   = df_DSL_long,
-  type   = 3
-)
-summary(aov_DSL) #NS
+# (A) Condition / order effects
+a_DS0 <- anova(m_DS0)
+print(a_DS0)
+cat(sprintf("DS main effects p: condition=%.4f, order=%.4f\n",
+            a_DS0["condition","Pr(>F)"], a_DS0["order","Pr(>F)"]))
+ #DS main effects p: condition=0.9700, order=0.1104
+
+# (B) Intercept (grand mean) test: is overall DS different from 0?
+summ_fix_DS <- summary(m_DS0)$coefficients
+print(summ_fix_DS["(Intercept)", ])
+grand_mean_DS <- emmeans(m_DS0, ~ 1)
+print(summary(grand_mean_DS, infer = c(TRUE, TRUE)))
+mean_est_DS <- summary(grand_mean_DS)$emmean
+sd_res_DS   <- sigma(m_DS0)
+d_DS_intercept <- mean_est_DS / sd_res_DS
+cat(sprintf("DS intercept d (mean/sigma)=%.3f\n", d_DS_intercept))
+ #short-term saving>short-term spending: t(38)=3.91,p<.001,d=0.53
+
+# Add involvement as covariate (post only)
+df_DS_post <- df_DS_long %>%
+  dplyr::filter(condition %in% c("Present","Endpoint")) %>%
+  dplyr::mutate(condition = droplevels(condition))
+m_DS_inv <- lmer(Score ~ condition + order + scale(involvement) + (1|id),
+                 data = df_DS_post, REML = FALSE)
+a_DS_inv <- anova(m_DS_inv)
+print(a_DS_inv)
+cat(sprintf("DS post-only p: condition=%.4f, order=%.4f, involvement=%.4f\n",
+            a_DS_inv["condition","Pr(>F)"],
+            a_DS_inv["order","Pr(>F)"],
+            a_DS_inv["scale(involvement)","Pr(>F)"]))
+print(emmeans(m_DS_inv, ~ order))
+eta_p2_from_anova <- function(aov_tab, term){
+  if (!term %in% rownames(aov_tab)) stop("term not found in anova table.")
+  Fv  <- as.numeric(aov_tab[term, "F value"])
+  df1 <- as.numeric(aov_tab[term, "NumDF"])
+  df2 <- as.numeric(aov_tab[term, "DenDF"])
+  eta_p2 <- (Fv * df1) / (Fv * df1 + df2)
+  data.frame(term = term, F = Fv, df1 = df1, df2 = df2, eta_p2 = eta_p2)
+}
+a_DS_inv <- anova(m_DS_inv)
+eta_p2_from_anova(a_DS_inv, "order")
+ #Endpoint-focused first order preferred more to short-term saving,p=.043,etas=0.11
+
+# Interaction check (post only)
+m_DS_int <- lmer(Score ~ condition * order + scale(involvement) + (1|id),
+                 data = df_DS_post, REML = FALSE)
+a_DS_int <- anova(m_DS_int)
+print(a_DS_int)
+cat(sprintf("DS post-only interaction p: condition:order=%.4f\n",
+            a_DS_int["condition:order","Pr(>F)"]))
+ #No interaction effects between condition and order,p=.278
+
+# DL = long-term saving - short-term spending
+df_DL_wide <- alloc_DL$wide
+df_DL_long <- alloc_DL$long
+# Skewness checks (per condition)
+skewness(df_DL_wide$Pretest,  na.rm = TRUE)  # -1.49
+skewness(df_DL_wide$Present,  na.rm = TRUE)  # -1.16
+skewness(df_DL_wide$Endpoint, na.rm = TRUE)  # -0.81
+
+# Main model: condition + order
+df_DL_long$condition <- factor(df_DL_long$condition, levels = c("Pretest","Present","Endpoint"))
+df_DL_long$order     <- factor(df_DL_long$order, levels = c("EP","PE"))
+m_DL0 <- lmer(Score ~ condition + order + (1|id), data = df_DL_long, REML = FALSE)
+
+# (A) Condition / order effects
+a_DL0 <- anova(m_DL0)
+print(a_DL0)
+cat(sprintf("DL main effects p: condition=%.4f, order=%.4f\n",
+            a_DL0["condition","Pr(>F)"], a_DL0["order","Pr(>F)"]))
+ #DL main effects p: condition=0.8768, order=0.7286
+
+# (B) Intercept (grand mean) test: is overall DL different from 0?
+summ_fix_DL <- summary(m_DL0)$coefficients
+print(summ_fix_DL["(Intercept)", ])
+grand_mean_DL <- emmeans(m_DL0, ~ 1)
+print(summary(grand_mean_DL, infer = c(TRUE, TRUE)))
+mean_est_DL <- summary(grand_mean_DL)$emmean
+sd_res_DL   <- sigma(m_DL0)
+d_DL_intercept <- mean_est_DL / sd_res_DL
+cat(sprintf("DL intercept d (mean/sigma)=%.3f\n", d_DL_intercept))
+ #long-term saving>short-term spending: t(38)=3.70,p=.001,d=1.03
+
+# Add involvement as covariate (post only)
+df_DL_post <- df_DL_long %>%
+  dplyr::filter(condition %in% c("Present","Endpoint")) %>%
+  dplyr::mutate(condition = droplevels(condition))
+m_DL_inv <- lmer(Score ~ condition + order + scale(involvement) + (1|id),
+                 data = df_DL_post, REML = FALSE)
+a_DL_inv <- anova(m_DL_inv)
+print(a_DL_inv)
+cat(sprintf("DL post-only p: condition=%.4f, order=%.4f, involvement=%.4f\n",
+            a_DL_inv["condition","Pr(>F)"],
+            a_DL_inv["order","Pr(>F)"],
+            a_DL_inv["scale(involvement)","Pr(>F)"]))
+ #DL post-only p: condition=0.9222, order=0.8727, involvement=0.7143
+
+# DSL = long-term saving - short-term saving
+df_DSL_wide <- alloc_DSL$wide
+df_DSL_long <- alloc_DSL$long
+# Skewness checks (per condition)
+skewness(df_DSL_wide$Pretest,  na.rm = TRUE)  # -0.22
+skewness(df_DSL_wide$Present,  na.rm = TRUE)  # -0.34
+skewness(df_DSL_wide$Endpoint, na.rm = TRUE)  # -0.25
+
+# Main model: condition + order
+df_DSL_long$condition <- factor(df_DSL_long$condition, levels = c("Pretest","Present","Endpoint"))
+df_DSL_long$order     <- factor(df_DSL_long$order, levels = c("EP","PE"))
+m_DSL0 <- lmer(Score ~ condition + order + (1|id), data = df_DSL_long, REML = FALSE)
+
+# (A) Condition / order effects
+a_DSL0 <- anova(m_DSL0)
+print(a_DSL0)
+cat(sprintf("DSL main effects p: condition=%.4f, order=%.4f\n",
+            a_DSL0["condition","Pr(>F)"], a_DSL0["order","Pr(>F)"]))
+ #DSL main effects p: condition=0.9814, order=0.1845
+
+# (B) Intercept (grand mean) test: is overall DSL different from 0?
+summ_fix_DSL <- summary(m_DSL0)$coefficients
+print(summ_fix_DSL["(Intercept)", ]) #NS
+
+# Add involvement as covariate (post only)
+df_DSL_post <- df_DSL_long %>%
+  dplyr::filter(condition %in% c("Present","Endpoint")) %>%
+  dplyr::mutate(condition = droplevels(condition))
+m_DSL_inv <- lmer(Score ~ condition + order + scale(involvement) + (1|id),
+                  data = df_DSL_post, REML = FALSE)
+a_DSL_inv <- anova(m_DSL_inv)
+print(a_DSL_inv)
+cat(sprintf("DSL post-only p: condition=%.4f, order=%.4f, involvement=%.4f\n",
+            a_DSL_inv["condition","Pr(>F)"],
+            a_DSL_inv["order","Pr(>F)"],
+            a_DSL_inv["scale(involvement)","Pr(>F)"]))
+print(emmeans(m_DSL_inv, ~ order)) #NS
+
+# restore contrasts option
+options(op_contr)
 
 ## Plotting
 if (!"id" %in% names(rd_pretest_filtered))  rd_pretest_filtered$id  <- seq_len(nrow(rd_pretest_filtered))
@@ -611,8 +919,6 @@ coef_df <- dplyr::bind_rows(
   )
 
 pd <- position_dodge(width = 0.45)
-
-p_reg<-pd <- position_dodge(width = 0.45)
 
 p_reg <- ggplot(coef_df,
                 aes(x = Outcome, y = Beta, color = Group, shape = Group)) +
