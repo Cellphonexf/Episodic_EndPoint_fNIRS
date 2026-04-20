@@ -1,7 +1,7 @@
 # Episodic thinking: endpoint-focused vs. present-focused
 # Behavioral data analysis & viso
 # This script requires one file: "behavioral_rawdata.xlsx"
-# Programmed by Feng XIAO (updated on 2026.2.26)
+# Programmed by Feng XIAO (updated on 2026.4.19)
 ############################################################################################################
 
 ### Preparation
@@ -229,66 +229,88 @@ m_time_inv <- lmer(timing_speed ~ condition + order + scale(involvement) + (1|id
 anova(m_time_inv) #NS
 
 ## Plotting
-df_time_seq_cond <- dplyr::bind_rows(
+df_time_bar_sum <- dplyr::bind_rows(
   tibble::tibble(
-    id        = rd_pretest_filtered$SubjectNumber,
-    order     = rd_pretest_filtered$order,
-    condition = "Endpoint",
-    Pretest   = time_pre,
-    Post1     = dplyr::if_else(order == "EP", time_E, NA_real_),  # endpoint first
-    Post2     = dplyr::if_else(order == "PE", time_E, NA_real_)   # endpoint second
+    timepoint = "Pretest",
+    condition = "Pretest",
+    mean = mean(time_pre, na.rm = TRUE),
+    se   = sd(time_pre, na.rm = TRUE) / sqrt(sum(!is.na(time_pre))),
+    n    = sum(!is.na(time_pre))
   ),
   tibble::tibble(
-    id        = rd_pretest_filtered$SubjectNumber,
-    order     = rd_pretest_filtered$order,
+    timepoint = "Post1",
+    condition = "Endpoint",
+    mean = mean(time_E[rd_pretest_filtered$order == "EP"], na.rm = TRUE),
+    se   = sd(time_E[rd_pretest_filtered$order == "EP"], na.rm = TRUE) /
+      sqrt(sum(!is.na(time_E[rd_pretest_filtered$order == "EP"]))),
+    n    = sum(!is.na(time_E[rd_pretest_filtered$order == "EP"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post1",
     condition = "Present",
-    Pretest   = time_pre,
-    Post1     = dplyr::if_else(order == "PE", time_P, NA_real_),  # present first
-    Post2     = dplyr::if_else(order == "EP", time_P, NA_real_)   # present second
+    mean = mean(time_P[rd_pretest_filtered$order == "PE"], na.rm = TRUE),
+    se   = sd(time_P[rd_pretest_filtered$order == "PE"], na.rm = TRUE) /
+      sqrt(sum(!is.na(time_P[rd_pretest_filtered$order == "PE"]))),
+    n    = sum(!is.na(time_P[rd_pretest_filtered$order == "PE"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post2",
+    condition = "Endpoint",
+    mean = mean(time_E[rd_pretest_filtered$order == "PE"], na.rm = TRUE),
+    se   = sd(time_E[rd_pretest_filtered$order == "PE"], na.rm = TRUE) /
+      sqrt(sum(!is.na(time_E[rd_pretest_filtered$order == "PE"]))),
+    n    = sum(!is.na(time_E[rd_pretest_filtered$order == "PE"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post2",
+    condition = "Present",
+    mean = mean(time_P[rd_pretest_filtered$order == "EP"], na.rm = TRUE),
+    se   = sd(time_P[rd_pretest_filtered$order == "EP"], na.rm = TRUE) /
+      sqrt(sum(!is.na(time_P[rd_pretest_filtered$order == "EP"]))),
+    n    = sum(!is.na(time_P[rd_pretest_filtered$order == "EP"]))
   )
 ) %>%
-  tidyr::pivot_longer(
-    cols = c("Pretest","Post1","Post2"),
-    names_to = "timepoint",
-    values_to = "timing_speed"
-  ) %>%
   dplyr::mutate(
-    timepoint = factor(timepoint, levels = c("Pretest","Post1","Post2")),
-    condition = factor(condition, levels = c("Endpoint","Present"))
+    timepoint = factor(timepoint, levels = c("Pretest", "Post1", "Post2")),
+    condition = factor(condition, levels = c("Pretest", "Endpoint", "Present"))
   )
 
-df_time_seq_sum <- df_time_seq_cond %>%
-  dplyr::group_by(condition, timepoint) %>%
-  dplyr::summarise(
-    mean = mean(timing_speed, na.rm = TRUE),
-    se   = sd(timing_speed, na.rm = TRUE) / sqrt(sum(!is.na(timing_speed))),
-    n    = sum(!is.na(timing_speed)),
-    .groups = "drop"
-  )
-
-pd <- position_dodge(width = 0.30)
-
-p_time <- ggplot(df_time_seq_sum,
-                 aes(x = timepoint, y = mean,
-                     color = condition, group = condition)) +
-  geom_line(linewidth = 0.45, position = pd) +
-  geom_point(aes(shape = condition),
-             size = 1.0, stroke = 0.7, position = pd) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
-                width = 0.10, linewidth = 0.45, position = pd) +
-  scale_x_discrete(labels = c("Pretest" = "Pretest",
-                              "Post1"   = "Posttest 1",
-                              "Post2"   = "Posttest 2")) +
-  scale_y_continuous(limits = c(-4, 0),
-                     breaks = seq(-4, 0, by = 1),
-                     expand = c(0, 0)) +
-  labs(x = NULL,
-       y = "Duration estimation difference (s)",
-       title = NULL) +
-  scale_color_manual(values = c("Endpoint" = "#B22222",
-                                "Present"  = "#4169E1")) +
-  scale_shape_manual(values = c("Endpoint" = 1,
-                                "Present"  = 2)) +
+p_time <- ggplot(
+  df_time_bar_sum,
+  aes(x = timepoint, y = mean, fill = condition)
+) +
+  geom_col(
+    width = 0.62,
+    colour = "black",
+    linewidth = 0.35,
+    position = position_dodge(width = 0.70)
+  ) +
+  geom_errorbar(
+    aes(ymin = mean - se, ymax = mean + se),
+    width = 0.10,
+    linewidth = 0.45,
+    position = position_dodge(width = 0.70)
+  ) +
+  scale_x_discrete(labels = c(
+    "Pretest" = "Pretest",
+    "Post1"   = "Posttest 1",
+    "Post2"   = "Posttest 2"
+  )) +
+  scale_y_continuous(
+    limits = c(-6, 0),
+    breaks = seq(-6, 0, by = 1.5),
+    expand = c(0, 0)
+  ) +
+  labs(
+    x = NULL,
+    y = "Duration estimation difference (s)",
+    title = NULL
+  ) +
+  scale_fill_manual(values = c(
+    "Pretest"  = "grey70",
+    "Endpoint" = "#B22222",
+    "Present"  = "#4169E1"
+  )) +
   theme_classic(base_size = 8) +
   theme(
     axis.line        = element_line(colour = "black", linewidth = 0.35),
@@ -302,10 +324,12 @@ p_time <- ggplot(df_time_seq_sum,
   patchwork::plot_annotation(
     title = "(A) Interval-timing speed",
     theme = theme(
-      plot.title = element_text(size = 7,
-                                colour = "black",
-                                face = "bold",
-                                margin = ggplot2::margin(b = 2))
+      plot.title = element_text(
+        size = 7,
+        colour = "black",
+        face = "bold",
+        margin = ggplot2::margin(b = 2)
+      )
     )
   )
 ggsave("pic_time.pdf", plot = p_time, width = 2, height = 2, units = "in", device = cairo_pdf)
@@ -370,57 +394,67 @@ anova(m_logk_inv) #NS
 ## Plotting
 tmp_post_k <- map_post12(df_k$Present, df_k$Endpoint, df_k$order)
 
-df_logk_seq_cond <- dplyr::bind_rows(
+df_logk_bar_sum <- dplyr::bind_rows(
   tibble::tibble(
-    id        = df_k$id,
-    order     = df_k$order,
-    condition = "Endpoint",
-    Pretest   = df_k$Pretest,
-    Post1     = dplyr::if_else(order == "EP", tmp_post_k$post1, NA_real_), # EP: Endpoint first
-    Post2     = dplyr::if_else(order == "PE", tmp_post_k$post2, NA_real_)  # PE: Endpoint second
+    timepoint = "Pretest",
+    condition = "Pretest",
+    mean = mean(df_k$Pretest, na.rm = TRUE),
+    se   = sd(df_k$Pretest, na.rm = TRUE) / sqrt(sum(!is.na(df_k$Pretest))),
+    n    = sum(!is.na(df_k$Pretest))
   ),
   tibble::tibble(
-    id        = df_k$id,
-    order     = df_k$order,
+    timepoint = "Post1",
+    condition = "Endpoint",
+    mean = mean(tmp_post_k$post1[df_k$order == "EP"], na.rm = TRUE),
+    se   = sd(tmp_post_k$post1[df_k$order == "EP"], na.rm = TRUE) /
+      sqrt(sum(!is.na(tmp_post_k$post1[df_k$order == "EP"]))),
+    n    = sum(!is.na(tmp_post_k$post1[df_k$order == "EP"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post1",
     condition = "Present",
-    Pretest   = df_k$Pretest,
-    Post1     = dplyr::if_else(order == "PE", tmp_post_k$post1, NA_real_), # PE: Present first
-    Post2     = dplyr::if_else(order == "EP", tmp_post_k$post2, NA_real_)  # EP: Present second
+    mean = mean(tmp_post_k$post1[df_k$order == "PE"], na.rm = TRUE),
+    se   = sd(tmp_post_k$post1[df_k$order == "PE"], na.rm = TRUE) /
+      sqrt(sum(!is.na(tmp_post_k$post1[df_k$order == "PE"]))),
+    n    = sum(!is.na(tmp_post_k$post1[df_k$order == "PE"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post2",
+    condition = "Endpoint",
+    mean = mean(tmp_post_k$post2[df_k$order == "PE"], na.rm = TRUE),
+    se   = sd(tmp_post_k$post2[df_k$order == "PE"], na.rm = TRUE) /
+      sqrt(sum(!is.na(tmp_post_k$post2[df_k$order == "PE"]))),
+    n    = sum(!is.na(tmp_post_k$post2[df_k$order == "PE"]))
+  ),
+  tibble::tibble(
+    timepoint = "Post2",
+    condition = "Present",
+    mean = mean(tmp_post_k$post2[df_k$order == "EP"], na.rm = TRUE),
+    se   = sd(tmp_post_k$post2[df_k$order == "EP"], na.rm = TRUE) /
+      sqrt(sum(!is.na(tmp_post_k$post2[df_k$order == "EP"]))),
+    n    = sum(!is.na(tmp_post_k$post2[df_k$order == "EP"]))
   )
 ) %>%
-  tidyr::pivot_longer(
-    cols = c("Pretest","Post1","Post2"),
-    names_to = "timepoint",
-    values_to = "discounting_rate"
-  ) %>%
   dplyr::mutate(
-    timepoint = factor(timepoint, levels = c("Pretest","Post1","Post2")),
-    condition = factor(condition, levels = c("Endpoint","Present"))
+    timepoint = factor(timepoint, levels = c("Pretest", "Post1", "Post2")),
+    condition = factor(condition, levels = c("Pretest", "Endpoint", "Present"))
   )
-
-df_logk_seq_sum <- df_logk_seq_cond %>%
-  dplyr::group_by(condition, timepoint) %>%
-  dplyr::summarise(
-    mean = mean(discounting_rate, na.rm = TRUE),
-    se   = sd(discounting_rate, na.rm = TRUE) / sqrt(sum(!is.na(discounting_rate))),
-    n    = sum(!is.na(discounting_rate)),
-    .groups = "drop"
-  )
-
-pd <- position_dodge(width = 0.30)
 
 p_logk <- ggplot2::ggplot(
-  df_logk_seq_sum,
-  ggplot2::aes(x = timepoint, y = mean, color = condition, group = condition)
+  df_logk_bar_sum,
+  ggplot2::aes(x = timepoint, y = mean, fill = condition)
 ) +
-  ggplot2::geom_line(linewidth = 0.45, position = pd) +
-  ggplot2::geom_point(
-    ggplot2::aes(shape = condition),
-    size = 1.0, stroke = 0.7, position = pd
+  ggplot2::geom_col(
+    width = 0.62,
+    colour = "black",
+    linewidth = 0.35,
+    position = ggplot2::position_dodge(width = 0.70)
   ) +
   ggplot2::geom_errorbar(
     ggplot2::aes(ymin = mean - se, ymax = mean + se),
-    width = 0.10, linewidth = 0.45, position = pd
+    width = 0.10,
+    linewidth = 0.45,
+    position = ggplot2::position_dodge(width = 0.70)
   ) +
   ggplot2::scale_x_discrete(labels = c(
     "Pretest" = "Pretest",
@@ -428,18 +462,19 @@ p_logk <- ggplot2::ggplot(
     "Post2"   = "Posttest 2"
   )) +
   ggplot2::scale_y_continuous(
-    limits = c(-8, 0),
-    breaks = seq(-8, 0, by = 2),
+    limits = c(-12, 0),
+    breaks = seq(-12, 0, by = 3),
     expand = c(0, 0)
   ) +
-  ggplot2::labs(x = NULL, y = "Log k-value", title = NULL) +
-  ggplot2::scale_color_manual(values = c(
+  ggplot2::labs(
+    x = NULL,
+    y = "Log k-value",
+    title = NULL
+  ) +
+  ggplot2::scale_fill_manual(values = c(
+    "Pretest"  = "grey70",
     "Endpoint" = "#B22222",
     "Present"  = "#4169E1"
-  )) +
-  ggplot2::scale_shape_manual(values = c(
-    "Endpoint" = 1,
-    "Present"  = 2
   )) +
   ggplot2::theme_classic(base_size = 8) +
   ggplot2::theme(
@@ -455,7 +490,9 @@ p_logk <- ggplot2::ggplot(
     title = "(B) Delay discounting rate",
     theme = ggplot2::theme(
       plot.title = ggplot2::element_text(
-        size = 7, colour = "black", face = "bold",
+        size = 7,
+        colour = "black",
+        face = "bold",
         margin = ggplot2::margin(b = 2)
       )
     )
