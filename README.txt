@@ -1,6 +1,6 @@
 ##Comparing Terror Management and Time Management: The Effects of Mortality Awareness on Time Perception, Delay Discounting, and Monetary Allocation##
 
-##Disclaimer: The data provided here are part of an unpublished manuscript currently under review/preparation. Redistribution, citation, or use of these materials is not permitted without explicit consent from the corresponding author. Unauthorized use or distribution will be considered a violation of academic integrity and may result in legal consequences.##
+##This manuscript has been accepted by Acta Psychologica##
 
 Welcome to the GitHub repository for our research project. This repository contains the code and data used in our study.
 
@@ -65,4 +65,4 @@ Reference: https://doi.org/10.1016/j.neuroimage.2008.08.036
 
 
 
-##Edited on March 6, 2026
+##Edited on May 26, 2026
